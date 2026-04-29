@@ -96,3 +96,9 @@ Because the problem statement was intentionally incomplete, I made the following
 ## Notes
 
 This repository is designed as a backend case study demonstration and focuses mainly on engineering approach, schema understanding, and API logic rather than full production deployment.
+
+---
+
+## Submission Intent
+
+The objective of this submission was to demonstrate backend problem-solving approach, practical schema design, and readable API implementation under incomplete business requirements.

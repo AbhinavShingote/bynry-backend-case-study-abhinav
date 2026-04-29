@@ -1,23 +1,28 @@
 from flask import Flask, request, jsonify
 from models import db, Product, Inventory, Warehouse, Supplier, ProductSupplier
 
+# Bynry Backend Engineering Intern Case Study
+# Simple demonstration implementation for product creation and low stock alerts
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///stockflow.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
-# -------------------------------
-# PART 1 : CREATE PRODUCT API
-# -------------------------------
+# -----------------------------------
+# PART 1 : PRODUCT CREATION API
+# -----------------------------------
 @app.route('/api/products', methods=['POST'])
 def create_product():
     data = request.json
 
     try:
+        # Validate required fields
         if 'name' not in data or 'sku' not in data or 'price' not in data:
             return {"error": "name, sku and price are required"}, 400
 
+        # Validate negative values
         if data['price'] < 0:
             return {"error": "price cannot be negative"}, 400
 
@@ -25,10 +30,12 @@ def create_product():
         if initial_quantity < 0:
             return {"error": "quantity cannot be negative"}, 400
 
+        # Check duplicate SKU
         existing_product = Product.query.filter_by(sku=data['sku']).first()
         if existing_product:
             return {"error": "SKU already exists"}, 400
 
+        # Create product
         product = Product(
             name=data['name'],
             sku=data['sku'],
@@ -37,6 +44,7 @@ def create_product():
         db.session.add(product)
         db.session.flush()
 
+        # Create inventory if warehouse is provided
         if 'warehouse_id' in data:
             inventory = Inventory(
                 product_id=product.id,
@@ -51,12 +59,12 @@ def create_product():
 
     except Exception as e:
         db.session.rollback()
-        return {"error": "Unable to create product"}, 500
+        return {"error": f"Unable to create product: {str(e)}"}, 500
 
 
-# -------------------------------
+# -----------------------------------
 # PART 3 : LOW STOCK ALERT API
-# -------------------------------
+# -----------------------------------
 @app.route('/api/companies/<int:company_id>/alerts/low-stock', methods=['GET'])
 def low_stock_alert(company_id):
     alerts = []
@@ -67,6 +75,7 @@ def low_stock_alert(company_id):
         .filter(Warehouse.company_id == company_id)\
         .all()
 
+    # Check each inventory item against threshold
     for inventory, product, warehouse in inventories:
         if inventory.quantity < inventory.threshold:
             supplier_link = ProductSupplier.query.filter_by(product_id=product.id).first()
@@ -91,6 +100,7 @@ def low_stock_alert(company_id):
                 }
             })
 
+    # Return all generated alerts for the requested company
     return jsonify({
         "alerts": alerts,
         "total_alerts": len(alerts)
